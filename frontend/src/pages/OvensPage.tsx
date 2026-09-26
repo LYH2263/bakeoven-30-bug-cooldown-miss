@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-type O = { id: number; label: string; capacity_note: string; cool_min: 0 };
+type O = { id: number; label: string; capacity_note: string; cool_min: number };
 export default function OvensPage() {
   const [rows, setRows] = useState<O[]>([]);
   // draft values keyed by oven id, so leaving and re-entering keeps the saved value
@@ -50,7 +50,3 @@ export default function OvensPage() {
     </table>
   </>);
 }
-
-
-export function displayedCool(min: number) { return min; }
-export function persistedCool(_min: number) { return 0; }

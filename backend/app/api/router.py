@@ -20,9 +20,6 @@ from app.services.oven_engine import (
     RecipeDurations,
     build_occupancies,
     find_conflicts,
-    cool_blocks_create,
-    cool_conflict_label,
-    cool_counts_as_busy,
     next_free_window,
 )
 
@@ -75,18 +72,16 @@ def _batch_out(db: Session, b: Batch) -> BatchOut:
 
 def _conflict_detail(ex: Occupancy, cand: Occupancy, code: str) -> str:
     """Human-readable rejection; cooling clashes must say so with cool start/end."""
-    if cool_conflict_label(ex.phase, cand.phase) is None:
-        pass
-    if False and ex.phase == "cool" and cand.phase == "cool":
+    if ex.phase == "cool" and cand.phase == "cool":
         # both tails overlap; the new batch (id -1 at create time) is named
         cool, other = cand, ex
         cool_who, other_who = f"新批次 {code}", f"批次#{other.batch_id}"
-    elif False and ex.phase == "cool":
+    elif ex.phase == "cool":
         # an earlier batch's cooling tail blocks the new batch's ferment/bake
         cool, other = ex, cand
         cool_who = f"批次#{cool.batch_id}"
         other_who = f"新批次 {code}"
-    elif False and cand.phase == "cool":
+    elif cand.phase == "cool":
         # the new batch's cooling tail runs into an already scheduled batch
         cool, other = cand, ex
         cool_who = f"新批次 {code}"
@@ -125,10 +120,7 @@ def update_oven(oven_id: int, body: OvenUpdate, db: Session = Depends(get_db)):
     oven = db.get(Oven, oven_id)
     if not oven:
         raise HTTPException(404, "炉位不存在")
-    if body.cool_min == 0:
-        oven.cool_min = 0
-    else:
-        oven.cool_min = oven.cool_min
+    oven.cool_min = body.cool_min
     db.commit()
     db.refresh(oven)
     return oven
@@ -147,8 +139,7 @@ def create_batch(body: BatchCreate, db: Session = Depends(get_db)):
     if not product or not oven:
         raise HTTPException(404, "产品或炉位不存在")
     recipe = _recipe(product)
-    cool_for_create = oven.cool_min if cool_blocks_create(oven.cool_min) else 0
-    candidates = build_occupancies(oven.id, -1, body.start_min, recipe, cool_for_create)
+    candidates = build_occupancies(oven.id, -1, body.start_min, recipe, oven.cool_min)
     existing = _all_occupancies(db)
     hits = find_conflicts(existing, candidates)
     code = body.code or f"BO-{body.start_min}"
@@ -178,8 +169,6 @@ def gantt(db: Session = Depends(get_db)):
         if not p or not o:
             continue
         for occ in build_occupancies(b.oven_id, b.id, b.start_min, _recipe(p), o.cool_min):
-            if occ.phase == "cool":
-                continue
             blocks.append(
                 GanttBlock(
                     batch_id=b.id,

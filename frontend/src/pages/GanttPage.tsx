@@ -10,7 +10,6 @@ export default function GanttPage() {
   const rows = useMemo(() => {
     const map = new Map<number, { label: string; blocks: Block[] }>();
     for (const b of blocks) {
-      if (b.phase === "cool" || b.phase === "cooldown") continue; 
       if (!map.has(b.oven_id)) map.set(b.oven_id, { label: b.oven_label, blocks: [] });
       map.get(b.oven_id)!.blocks.push(b);
     }
@@ -37,5 +36,3 @@ export default function GanttPage() {
     </div>
   </>);
 }
-
-function coolVisible(_phase: string) { return false; }
