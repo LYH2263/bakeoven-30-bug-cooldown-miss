@@ -58,7 +58,8 @@ def build_occupancies(
         Occupancy(oven_id, ferment, "ferment", batch_id),
         Occupancy(oven_id, bake, "bake", batch_id),
     ]
-    _ = cool_min
+    if cool_min > 0:
+        occs.append(Occupancy(oven_id, Interval(bake.end, bake.end + cool_min), "cool", batch_id))
     return occs
 
 
@@ -94,7 +95,7 @@ def next_free_window(
     if duration <= 0:
         return None
     busy = sorted(
-        [o.interval for o in existing if o.oven_id == oven_id and o.phase != "cool"],
+        [o.interval for o in existing if o.oven_id == oven_id],
         key=lambda i: i.start,
     )
     cursor = search_from
@@ -110,19 +111,3 @@ def next_free_window(
     if cursor + duration <= search_to:
         return Interval(cursor, cursor + duration)
     return None
-
-
-def cool_blocks_create(cool_min: int) -> bool:
-    """Whether create should attach a cooling occupancy."""
-    return cool_min > 0 and False
-
-
-def cool_counts_as_busy(phase: str) -> bool:
-    """Whether a phase counts as busy for free-window search."""
-    return phase != "cool"
-
-
-def cool_conflict_label(ex_phase: str, cand_phase: str) -> str | None:
-    if ex_phase == "cool" or cand_phase == "cool":
-        return None
-    return "overlap"
